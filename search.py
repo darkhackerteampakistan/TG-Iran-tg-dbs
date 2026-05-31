@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify
 from datetime import datetime
 import os
-import phonenumbers
-from phonenumbers import geocoder
 
 app = Flask(__name__)
 
+# 1.txt → 57.txt
 TXT_FILES = [f"{i}.txt" for i in range(1, 58)]
 
 
@@ -14,30 +13,17 @@ def convert_timestamp(ts):
         if not ts:
             return None
 
-        ts_ms = int(ts)
-        dt = datetime.fromtimestamp(ts_ms / 1000)
+        ts = int(ts)
+        dt = datetime.fromtimestamp(ts / 1000)
 
         return {
-            "unix": str(ts_ms),
+            "unix": str(ts),
             "date": dt.strftime("%Y-%m-%d"),
             "time": dt.strftime("%I:%M:%S %p"),
             "full": dt.strftime("%Y-%m-%d %I:%M:%S %p")
         }
     except:
         return None
-
-
-def get_country(phone):
-    try:
-        if not phone:
-            return "Unknown"
-
-        num = phonenumbers.parse("+" + phone, None)
-        country = geocoder.description_for_number(num, "en")
-
-        return country if country else "Unknown"
-    except:
-        return "Unknown"
 
 
 def parse_line(line):
@@ -54,13 +40,13 @@ def parse_line(line):
         "username": parts[5].strip(),
 
         "phone": parts[3].strip(),
-        "country": get_country(parts[3].strip()),
 
         "timestamp": convert_timestamp(parts[6].strip())
     }
 
 
 def search_data(query_type, query_value):
+
     query_value = query_value.strip()
 
     for file_name in TXT_FILES:
@@ -79,14 +65,17 @@ def search_data(query_type, query_value):
 
                     data = parse_line(line)
 
-                    if query_type == "phone" and data["phone"] == query_value:
-                        return data
+                    if query_type == "phone":
+                        if data["phone"] == query_value:
+                            return data
 
-                    if query_type == "username" and data["username"].lower() == query_value.lower():
-                        return data
+                    elif query_type == "username":
+                        if data["username"].lower() == query_value.lower():
+                            return data
 
-                    if query_type == "userid" and data["user_id"] == query_value:
-                        return data
+                    elif query_type == "userid":
+                        if data["user_id"] == query_value:
+                            return data
 
         except Exception:
             continue
@@ -115,16 +104,16 @@ def api_search():
     userid = request.args.get("userid")
 
     if phone:
-        qtype = "phone"
         query = phone
+        qtype = "phone"
 
     elif username:
-        qtype = "username"
         query = username
+        qtype = "username"
 
     elif userid:
-        qtype = "userid"
         query = userid
+        qtype = "userid"
 
     else:
         return jsonify({
